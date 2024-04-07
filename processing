@@ -1,0 +1,63 @@
+import processing.serial.*;
+
+Serial puerto; // Objeto para la comunicación serial
+boolean[] ledsEstado = {false, false, true, true, false, false, true, true}; // Estado de los LEDs
+boolean[] btnsEstado = {true, true, true, true}; // Estado de los botones
+color[] circleColors = {color(255, 0, 0), color(0, 255, 0), color(0, 0, 255), color(255, 255, 0), color(0, 255, 255), color(255, 0, 255)}; // Colores para los círculos
+
+void setup() {
+  size(400, 200);
+  // Inicia la comunicación serial con Arduino
+  puerto = new Serial(this, Serial.list()[0], 9600);
+}
+
+void draw() {
+  background(255);
+  // Dibuja los LEDs
+  for (int i = 0; i < 8; i++) {
+    fill(ledsEstado[i/2] ? circleColors[i%6] : color(150));
+    ellipse(50 + i * 40, 50, 30, 30);
+  }
+  // Dibuja los botones
+  for (int i = 0; i < 4; i++) {
+    fill(btnsEstado[i] ? color(0, 255, 0) : color(150));
+    rect(50 + i * 90, 120, 60, 30);
+  }
+}
+
+// Envia la señal al Arduino cuando se presiona un botón
+void mousePressed() {
+  if (mouseY > 120 && mouseY < 150) {
+    for (int i = 0; i < 4; i++) {
+      if (mouseX > 50 + i * 90 && mouseX < 110 + i * 90) {
+        puerto.write((char)('A' + i));
+        break;
+      }
+    }
+  }
+  // Cambia el color de dos círculos al azar cuando se presiona el botón 0
+  if (mouseX > 50 && mouseX < 110 && mouseY > 120 && mouseY < 150 && btnsEstado[0]) {
+    int circle1 = int(random(8));
+    int circle2 = int(random(8));
+    while (circle1 == circle2) {
+      circle2 = int(random(8));
+    }
+    ledsEstado[circle1/2] = true;
+    ledsEstado[circle2/2] = true;
+    ledsEstado[3-(circle1/2)] = false;
+    ledsEstado[3-(circle2/2)] = false;
+  }
+}
+
+// Recibe los datos desde Arduino
+void serialEvent(Serial p) {
+  String mensaje = p.readStringUntil('\n').trim();
+  if (mensaje.length() == 1) {
+    char estado = mensaje.charAt(0);
+    if (estado >= 'A' && estado <= 'D') {
+      ledsEstado[estado - 'A'] = true;
+    } else if (estado >= 'E' && estado <= 'H') {
+      ledsEstado[estado - 'E'] = false;
+    }
+  }
+}
